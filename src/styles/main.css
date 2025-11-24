@@ -1,4 +1,4 @@
-/* src/styles/main.css - V26.0 (修复长文本显示截断) */
+/* src/styles/main.css - V27.3 (修复侧边栏覆盖问题) */
 
 :root {
   --gfp-bg-dark: #1e1f20;
@@ -14,33 +14,77 @@
   --gfp-font: 'Google Sans', Roboto, sans-serif;
 }
 
+/* === 核心修改：降低按钮层级 === */
 #gfp-menu-btn {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 9998;
-  padding: 12px 20px;
-  background: var(--gfp-bg-panel);
-  border: 1px solid var(--gfp-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  color: var(--gfp-text-main);
-  border-radius: 24px;
+  top: 16px;
+  right: 170px;
+  z-index: 9990;
+  /* 修改：降低层级 (原 9998)，让它能被侧边栏盖住 */
+
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--gfp-text-sub);
+
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+
   font-family: var(--gfp-font);
-  font-size: 14px;
   transition: all 0.2s;
 }
 
 #gfp-menu-btn:hover {
-  background: var(--gfp-bg-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--gfp-text-main);
 }
 
-/* === 侧边栏框架 === */
+#gfp-menu-btn span:first-child {
+  font-size: 20px;
+}
+
+/* === 幽灵悬浮按钮 === */
+#gfp-ghost-add-btn {
+  position: fixed;
+  z-index: 2147483647;
+  /* 保持最高，确保能被点击 */
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gfp-bg-panel);
+  border: 1px solid var(--gfp-accent);
+  color: var(--gfp-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out, transform 0.1s ease-out;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+#gfp-ghost-add-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#gfp-ghost-add-btn:hover {
+  background: var(--gfp-accent);
+  color: #000;
+  transform: scale(1.1);
+}
+
+/* === 核心修改：提高侧边栏层级 === */
 #gfp-sidebar {
   position: fixed;
   top: 0;
@@ -49,7 +93,8 @@
   height: 100vh;
   background: var(--gfp-bg-dark);
   border-left: 1px solid var(--gfp-border);
-  z-index: 9000;
+  z-index: 9995;
+  /* 修改：提高层级 (原 9000)，确保盖住 menu-btn */
   display: flex;
   flex-direction: column;
   padding: 20px;
@@ -118,14 +163,11 @@
   margin-bottom: 12px;
   color: var(--gfp-text-main);
   line-height: 1.4;
-
-  /* 默认保持单行截断，保持卡片整洁 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* === 修复：允许长文本换行的修饰类 === */
 .gfp-card-title.allow-wrap {
   white-space: normal;
   overflow: visible;
@@ -164,7 +206,7 @@
   cursor: not-allowed;
 }
 
-/* ... 其余样式保持不变 ... */
+/* === 文件夹列表区 === */
 .gfp-folders-section {
   flex: 1;
   display: flex;
@@ -318,6 +360,7 @@
   color: var(--gfp-danger);
 }
 
+/* 模态框 (层级最高 10000) */
 .gfp-modal-overlay {
   position: fixed;
   top: 0;
@@ -404,6 +447,7 @@
   font-weight: 500;
 }
 
+/* 选择文件夹列表 */
 .gfp-select-list {
   max-height: 180px;
   overflow-y: auto;
@@ -431,4 +475,10 @@
   background: rgba(168, 199, 250, 0.1);
   color: var(--gfp-accent);
   border-left: 3px solid var(--gfp-accent);
+}
+
+.gfp-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
