@@ -1,4 +1,4 @@
-// ... 前面的 state 定义保持不变 ...
+// src/scripts/content.js - V5.1 (修复 Cancel 按钮 Bug)
 const STORAGE_KEY = 'gemini_folder_data_v2';
 let state = {
     folders: [], 
@@ -12,16 +12,13 @@ let currentFolderToEdit = null;
 
 // --- 初始化 ---
 async function init() {
-    console.log("Gemini Folder Plugin: Starting...");
+    console.log("%c Gemini Folder Plugin [V5.1] Loaded ", "background: #000; color: #00f; font-size: 16px");
+    
     await loadData();
     injectSidebar();
     injectModals();
     injectMenuButton(); 
-    
-    // 启动监听器
     startObserver(); 
-    
-    console.log("Gemini Folder Plugin: Loaded!");
 }
 
 async function loadData() {
@@ -34,7 +31,7 @@ async function saveData() {
     renderSidebarList(); 
 }
 
-// --- DOM 注入 (保持不变) ---
+// --- DOM 注入 (侧边栏) ---
 function injectSidebar() {
     if (document.getElementById('gfp-sidebar')) return;
     const sidebar = document.createElement('div');
@@ -71,7 +68,7 @@ function injectMenuButton() {
     document.body.appendChild(btn);
 }
 
-// --- 模态框注入 (保持不变) ---
+// --- 模态框注入 (修复重点) ---
 function injectModals() {
     if (document.getElementById('modal-create-folder')) return;
     const modalContainer = document.createElement('div');
@@ -86,7 +83,8 @@ function injectModals() {
                     <input type="text" class="gfp-search-input" id="gfp-input-foldername" maxlength="30">
                 </div>
                 <div class="gfp-modal-actions">
-                    <button class="gfp-btn gfp-btn-cancel" onclick="closeAllModals()">Cancel</button>
+                    <!-- 给 Cancel 按钮加了 ID，去掉了 onclick -->
+                    <button class="gfp-btn gfp-btn-cancel" id="gfp-cancel-create">Cancel</button>
                     <button class="gfp-btn gfp-btn-confirm" id="gfp-confirm-create">Add</button>
                 </div>
             </div>
@@ -103,7 +101,8 @@ function injectModals() {
                 <div class="gfp-modal-actions" style="justify-content: space-between;">
                     <button class="gfp-btn gfp-btn-delete" id="gfp-btn-delete-req">Delete Folder</button>
                     <div style="display:flex; gap:8px;">
-                        <button class="gfp-btn gfp-btn-cancel" onclick="closeAllModals()">Cancel</button>
+                        <!-- 给 Cancel 按钮加了 ID -->
+                        <button class="gfp-btn gfp-btn-cancel" id="gfp-cancel-settings">Cancel</button>
                         <button class="gfp-btn gfp-btn-confirm" id="gfp-confirm-rename">Save</button>
                     </div>
                 </div>
@@ -115,11 +114,12 @@ function injectModals() {
             <div class="gfp-modal">
                 <div class="gfp-modal-title">Add to Folder</div>
                 <input type="text" class="gfp-search-input" id="gfp-search-chat-list" placeholder="Search recent chats...">
-                <div class="gfp-select-list" id="gfp-chat-select-container">
-                    <!-- 动态生成 -->
-                </div>
+                <div class="gfp-select-list" id="gfp-chat-select-container"></div>
+                <!-- 调试信息 -->
+                <div id="gfp-debug-text" style="font-size:10px; color:#888; text-align:center; margin-bottom:10px; padding:5px; background:#111; border-radius:4px; max-height:60px; overflow:auto;"></div>
                 <div class="gfp-modal-actions">
-                    <button class="gfp-btn gfp-btn-cancel" onclick="closeAllModals()">Cancel</button>
+                    <!-- 给 Cancel 按钮加了 ID -->
+                    <button class="gfp-btn gfp-btn-cancel" id="gfp-cancel-add-chat">Cancel</button>
                     <button class="gfp-btn gfp-btn-confirm" id="gfp-confirm-add-chat-final">Add</button>
                 </div>
             </div>
@@ -127,76 +127,100 @@ function injectModals() {
     `;
     document.body.appendChild(modalContainer);
 
+    // --- 事件绑定 (这里是修复的关键) ---
+    // 绑定所有的 Cancel 按钮到 closeAllModals 函数
+    document.getElementById('gfp-cancel-create').addEventListener('click', closeAllModals);
+    document.getElementById('gfp-cancel-settings').addEventListener('click', closeAllModals);
+    document.getElementById('gfp-cancel-add-chat').addEventListener('click', closeAllModals);
+
+    // 其他事件绑定
     document.getElementById('gfp-input-foldername').addEventListener('input', function() { document.getElementById('gfp-char-count').innerText = this.value.length; });
     document.getElementById('gfp-confirm-create').onclick = createNewFolder;
     document.getElementById('gfp-confirm-rename').onclick = saveFolderRename;
     document.getElementById('gfp-btn-delete-req').onclick = () => { if(confirm('Are you sure?')) deleteFolder(); };
     document.getElementById('gfp-search-chat-list').addEventListener('input', (e) => { renderChatSelectionList(e.target.value); });
     document.getElementById('gfp-confirm-add-chat-final').onclick = confirmAddChatToFolder;
-    window.closeAllModals = () => { document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.classList.remove('active')); };
 }
 
-// === 核心修改：智能识别对话链接 ===
-function getRecentChatsFromDOM() {
-    console.log("Debug: Scanning DOM for REAL chats...");
+// 独立的关闭函数
+function closeAllModals() {
+    document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.classList.remove('active'));
+}
 
-    // 1. 尝试缩小范围：只在导航栏(nav)里找，如果找不到导航栏，再全屏找
-    let rootElement = document.querySelector('nav') || document.body;
-    
-    // 2. 抓取所有包含 /app/ 的链接
-    const allLinks = Array.from(rootElement.querySelectorAll('a[href*="/app/"]'));
+// === 核心：全域地毯式扫描器 (保持 V5.0 的逻辑) ===
+
+function getAllLinksDeep(root) {
+    let links = [];
+    if (root.querySelectorAll) {
+        try {
+            const currentLinks = root.querySelectorAll('a');
+            links.push(...Array.from(currentLinks));
+        } catch(e) { /* 忽略错误 */ }
+    }
+    if (root.querySelectorAll) {
+        const allElements = root.querySelectorAll('*');
+        for (const el of allElements) {
+            if (el.shadowRoot) {
+                links.push(...getAllLinksDeep(el.shadowRoot));
+            }
+        }
+    }
+    return links;
+}
+
+function getRecentChatsFromDOM() {
+    console.log("Debug: V5.1 Full Scan started...");
     
     const chats = [];
     const seenUrls = new Set();
     
-    // 3. 定义黑名单关键词 (必须屏蔽的内容)
-    const blacklist = [
-        'google', 'account', 'sign out', 'setting', 'upgrade', 'help', 'faq', 'activity', 
-        'manager', 'gemini advanced', '@', '账号', '设置', '帮助', '退出'
-    ];
+    const allLinks = getAllLinksDeep(document.body);
+    
+    console.log(`Debug: Scanned ${allLinks.length} total links.`);
 
-    // 4. 定义正则：真正的对话 ID 通常是比较长的字母数字组合
-    // 例如: /app/8a7f9d... 或者 /app/abc12345
-    // 而不是简单的 /app/ 或 /app/settings
-    const chatIdRegex = /\/app\/[a-zA-Z0-9]{8,}/; 
+    const blacklist = [
+        'accounts.google.com', 'support.google.com', 'mail.google.com',
+        'policies.google.com', 'myactivity.google.com', 'google 账号', 
+        'sign out', 'setting', 'upgrade', 'help', 'manager', 'faq', 'activity'
+    ];
 
     allLinks.forEach(link => {
         const url = link.href;
-        
-        // --- 过滤阶段 1: 黑名单检查 (检查 URL 和 文本) ---
-        // 获取链接所有可能的文本内容 (包括 aria-label, title, innerText)
-        const fullText = (link.innerText + ' ' + (link.getAttribute('aria-label')||'') + ' ' + (link.title||'')).toLowerCase();
-        
-        // 如果包含黑名单词，直接跳过 (比如你的账号包含 @, 包含 "google 账号")
-        if (blacklist.some(word => fullText.includes(word))) return;
+        if (!url.includes('/app/')) return;
+        if (blacklist.some(bad => url.includes(bad))) return;
 
-        // --- 过滤阶段 2: URL 结构检查 ---
-        // 必须符合对话 ID 的格式 (长度大于8的ID)
-        if (!chatIdRegex.test(url)) return;
-        
-        // --- 去重 ---
+        const idPart = url.split('/app/')[1];
+        if (!idPart || idPart.length < 5) return;
+
         if (seenUrls.has(url)) return;
         seenUrls.add(url);
 
-        // --- 提取标题 ---
-        // Gemini 的对话标题通常包裹在特定的 class 里面，但也可能是直接的 text
-        // 我们取一段看起来最像标题的文本
-        let title = link.getAttribute('aria-label') || link.innerText;
-        
-        // 清洗标题: 去掉换行、多余空格
-        title = title.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
-        
-        // 再次检查标题是否是 "Untitled" 或者太短
-        if (!title || title.length < 1) title = "Chat " + chats.length;
+        let title = link.innerText || link.getAttribute('aria-label') || link.title || "";
+        title = title.replace(/[\n\r]+/g, ' ').trim();
+        const lowerTitle = title.toLowerCase();
+
+        if (blacklist.some(bad => lowerTitle.includes(bad))) return;
+        if (!title) title = "Chat " + chats.length;
 
         chats.push({ title, url });
     });
 
-    console.log(`Debug: Found ${chats.length} real chats.`);
+    const debugText = document.getElementById('gfp-debug-text');
+    if (debugText) {
+        if(chats.length === 0) {
+             debugText.innerText = `Scanned ${allLinks.length} raw links. FOUND 0 CHATS. \n(Check Console for details)`;
+             debugText.style.color = "red";
+        } else {
+             debugText.innerText = `Success: Scanned ${allLinks.length} links, Found ${chats.length} chats.`;
+             debugText.style.color = "#888";
+        }
+    }
+
     return chats;
 }
 
-// --- 渲染侧边栏 (保持不变) ---
+// ... 渲染逻辑 ...
+
 function renderSidebarList(filterText = '') {
     const container = document.getElementById('gfp-folder-container');
     const toggleIcon = document.getElementById('gfp-toggle-list');
@@ -209,7 +233,6 @@ function renderSidebarList(filterText = '') {
         container.style.display = 'block';
         toggleIcon.innerText = '▼';
     }
-    
     container.innerHTML = '';
     
     state.folders.forEach(folder => {
@@ -245,44 +268,42 @@ function renderSidebarList(filterText = '') {
             arrow.classList.toggle('expanded', isVisible);
             arrow.innerText = isVisible ? '▼' : '▶';
         };
-
-        addBtn.onclick = () => {
-            currentFolderToAddChat = folder; 
-            openModal('add-chat-to-folder');
-        };
-
-        settingsBtn.onclick = () => {
-            currentFolderToEdit = folder;
-            openModal('settings');
-        };
-
+        addBtn.onclick = () => { currentFolderToAddChat = folder; openModal('add-chat-to-folder'); };
+        settingsBtn.onclick = () => { currentFolderToEdit = folder; openModal('settings'); };
         container.appendChild(el);
     });
 }
 
-// --- 渲染模态框里的“对话选择列表” ---
 function renderChatSelectionList(filter = '') {
     const container = document.getElementById('gfp-chat-select-container');
     container.innerHTML = '';
     selectedChatToAdd = null; 
 
-    // 获取数据
     const chats = getRecentChatsFromDOM();
-    
-    // 过滤
     const filteredChats = chats.filter(c => !filter || c.title.toLowerCase().includes(filter.toLowerCase()));
 
     if (filteredChats.length === 0) {
-        container.innerHTML = '<div style="padding:10px;color:#888;text-align:center">No chats found.<br><small>Try expanding your sidebar or scrolling down to load more chats.</small></div>';
+        setTimeout(() => {
+            const retryChats = getRecentChatsFromDOM();
+            if(retryChats.length > 0) {
+                 renderChatSelectionList(filter); 
+            }
+        }, 1000);
+        
+        container.innerHTML = '<div style="padding:10px;color:#888;text-align:center">No chats found.<br><small>Scanning page...</small></div>';
         return;
     }
 
     filteredChats.forEach(chat => {
         const item = document.createElement('div');
         item.className = 'gfp-select-item';
-        item.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${chat.title}</span>`;
-        item.title = chat.title; 
-        
+        item.title = chat.url;
+        item.innerHTML = `
+            <div style="width:100%">
+                <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${chat.title}</div>
+                <div style="font-size:10px;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${chat.url}</div>
+            </div>
+        `;
         item.onclick = () => {
             document.querySelectorAll('.gfp-select-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
@@ -292,7 +313,6 @@ function renderChatSelectionList(filter = '') {
     });
 }
 
-// --- 模态框打开逻辑 (保持不变) ---
 function openModal(type) {
     closeAllModals();
     if (type === 'add-folder') {
@@ -309,36 +329,23 @@ function openModal(type) {
     }
 }
 
-// --- 确认添加对话逻辑 (保持不变) ---
 function confirmAddChatToFolder() {
-    if (!selectedChatToAdd) {
-        alert("Please select a chat from the list first.");
-        return;
-    }
+    if (!selectedChatToAdd) { alert("Please select a chat first."); return; }
     if (!currentFolderToAddChat) return;
-
     const folder = state.folders.find(f => f.id === currentFolderToAddChat.id);
     if (folder) {
         const exists = folder.chats.some(c => c.url === selectedChatToAdd.url);
-        if (!exists) {
-            folder.chats.push(selectedChatToAdd);
-            saveData();
-        } else {
-            alert("This chat is already in the folder.");
-        }
+        if (!exists) { folder.chats.push(selectedChatToAdd); saveData(); }
+        else { alert("Chat already in folder."); }
     }
     closeAllModals();
 }
 
-// --- 简化的 Observer ---
 function startObserver() {
-    const observer = new MutationObserver((mutations) => {
-        injectMenuButton(); 
-    });
+    const observer = new MutationObserver((mutations) => { injectMenuButton(); });
     observer.observe(document.body, { childList: true, subtree: true });
 }
 
-// ... 辅助函数 (保持不变) ...
 function createNewFolder() {
     const nameInput = document.getElementById('gfp-input-foldername');
     const name = nameInput.value.trim();
