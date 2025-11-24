@@ -1,4 +1,4 @@
-/* src/styles/main.css - V17.0 (增加删除对话功能) */
+/* src/styles/main.css - V26.0 (修复长文本显示截断) */
 
 :root {
   --gfp-bg-dark: #1e1f20;
@@ -14,7 +14,6 @@
   --gfp-font: 'Google Sans', Roboto, sans-serif;
 }
 
-/* 左下角悬浮入口按钮 */
 #gfp-menu-btn {
   position: fixed;
   bottom: 20px;
@@ -46,7 +45,6 @@
   position: fixed;
   top: 0;
   right: -350px;
-  /* 默认隐藏 */
   width: 320px;
   height: 100vh;
   background: var(--gfp-bg-dark);
@@ -93,7 +91,7 @@
   color: var(--gfp-text-main);
 }
 
-/* === 核心功能区：当前对话卡片 === */
+/* === 当前对话卡片 === */
 .gfp-current-chat-card {
   background: var(--gfp-bg-panel);
   border: 1px solid var(--gfp-accent);
@@ -110,16 +108,29 @@
   letter-spacing: 1px;
   margin-bottom: 8px;
   font-weight: bold;
+  white-space: normal;
+  line-height: 1.4;
 }
 
 .gfp-card-title {
   font-size: 16px;
   font-weight: 500;
   margin-bottom: 12px;
+  color: var(--gfp-text-main);
+  line-height: 1.4;
+
+  /* 默认保持单行截断，保持卡片整洁 */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--gfp-text-main);
+}
+
+/* === 修复：允许长文本换行的修饰类 === */
+.gfp-card-title.allow-wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
 }
 
 .gfp-card-actions {
@@ -153,7 +164,7 @@
   cursor: not-allowed;
 }
 
-/* === 文件夹列表区 === */
+/* ... 其余样式保持不变 ... */
 .gfp-folders-section {
   flex: 1;
   display: flex;
@@ -188,10 +199,8 @@
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
-  /* 滚动条空间 */
 }
 
-/* 文件夹条目 */
 .gfp-folder-item {
   margin-bottom: 6px;
 }
@@ -250,7 +259,6 @@
   color: var(--gfp-text-main);
 }
 
-/* === 文件夹内的对话列表 (更新部分) === */
 .gfp-chat-list {
   padding-left: 20px;
   display: none;
@@ -261,7 +269,6 @@
   display: block;
 }
 
-/* 新的对话条目容器 */
 .gfp-chat-item-wrapper {
   display: flex;
   align-items: center;
@@ -289,7 +296,6 @@
   color: var(--gfp-accent);
 }
 
-/* 删除按钮 */
 .gfp-chat-delete-btn {
   width: 20px;
   height: 20px;
@@ -300,7 +306,7 @@
   cursor: pointer;
   font-size: 14px;
   opacity: 0;
-  transition: opacity 0.2s, color 0.2s;
+  transition: opacity 0.2s;
   margin-right: 4px;
 }
 
@@ -310,11 +316,8 @@
 
 .gfp-chat-delete-btn:hover {
   color: var(--gfp-danger);
-  background: rgba(255, 100, 100, 0.1);
-  border-radius: 4px;
 }
 
-/* 模态框 */
 .gfp-modal-overlay {
   position: fixed;
   top: 0;
@@ -338,7 +341,7 @@
 
 .gfp-modal {
   background: var(--gfp-bg-panel);
-  width: 320px;
+  width: 340px;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
@@ -360,7 +363,19 @@
   padding: 10px;
   border-radius: 6px;
   box-sizing: border-box;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+.gfp-input:focus {
+  outline: 2px solid var(--gfp-accent);
+  border-color: transparent;
+}
+
+.gfp-label {
+  font-size: 12px;
+  color: var(--gfp-text-sub);
+  margin-bottom: 6px;
+  display: block;
 }
 
 .gfp-modal-actions {
@@ -389,9 +404,8 @@
   font-weight: 500;
 }
 
-/* 选择文件夹列表 */
 .gfp-select-list {
-  max-height: 200px;
+  max-height: 180px;
   overflow-y: auto;
   margin-bottom: 20px;
   border: 1px solid var(--gfp-border);
@@ -403,6 +417,10 @@
   cursor: pointer;
   border-bottom: 1px solid var(--gfp-border);
   font-size: 13px;
+}
+
+.gfp-select-item:last-child {
+  border-bottom: none;
 }
 
 .gfp-select-item:hover {
