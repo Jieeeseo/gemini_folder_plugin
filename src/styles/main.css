@@ -1,4 +1,4 @@
-/* src/styles/main.css - V16.0 (当前对话集成版) */
+/* src/styles/main.css - V17.0 (增加删除对话功能) */
 
 :root {
   --gfp-bg-dark: #1e1f20;
@@ -23,7 +23,7 @@
   padding: 12px 20px;
   background: var(--gfp-bg-panel);
   border: 1px solid var(--gfp-border);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   color: var(--gfp-text-main);
   border-radius: 24px;
   cursor: pointer;
@@ -34,17 +34,19 @@
   font-size: 14px;
   transition: all 0.2s;
 }
+
 #gfp-menu-btn:hover {
   background: var(--gfp-bg-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
 }
 
 /* === 侧边栏框架 === */
 #gfp-sidebar {
   position: fixed;
   top: 0;
-  right: -350px; /* 默认隐藏 */
+  right: -350px;
+  /* 默认隐藏 */
   width: 320px;
   height: 100vh;
   background: var(--gfp-bg-dark);
@@ -56,22 +58,40 @@
   transition: right 0.3s ease-in-out;
   font-family: var(--gfp-font);
   color: var(--gfp-text-main);
-  box-shadow: -5px 0 20px rgba(0,0,0,0.6);
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
 }
-#gfp-sidebar.open { right: 0; }
 
-.gfp-sidebar-header { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
+#gfp-sidebar.open {
+  right: 0;
+}
+
+.gfp-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--gfp-border);
 }
-.gfp-sidebar-title { font-size: 18px; font-weight: 500; }
-.gfp-close-btn { background: none; border: none; color: var(--gfp-text-sub); font-size: 20px; cursor: pointer; padding: 4px; }
-.gfp-close-btn:hover { color: var(--gfp-text-main); }
+
+.gfp-sidebar-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.gfp-close-btn {
+  background: none;
+  border: none;
+  color: var(--gfp-text-sub);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.gfp-close-btn:hover {
+  color: var(--gfp-text-main);
+}
 
 /* === 核心功能区：当前对话卡片 === */
 .gfp-current-chat-card {
@@ -80,7 +100,7 @@
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .gfp-card-label {
@@ -122,7 +142,10 @@
   background: var(--gfp-accent);
   color: #000;
 }
-.gfp-btn-save:hover { background: #bfd6ff; }
+
+.gfp-btn-save:hover {
+  background: #bfd6ff;
+}
 
 .gfp-btn-save.disabled {
   background: var(--gfp-border);
@@ -156,64 +179,238 @@
   padding: 4px 8px;
   font-size: 12px;
 }
-.gfp-btn-icon:hover { background: var(--gfp-bg-hover); }
+
+.gfp-btn-icon:hover {
+  background: var(--gfp-bg-hover);
+}
 
 #gfp-folder-container {
   flex: 1;
   overflow-y: auto;
-  padding-right: 4px; /* 滚动条空间 */
+  padding-right: 4px;
+  /* 滚动条空间 */
 }
 
 /* 文件夹条目 */
-.gfp-folder-item { margin-bottom: 6px; }
+.gfp-folder-item {
+  margin-bottom: 6px;
+}
 
-.gfp-folder-header { 
-  display: flex; 
-  align-items: center; 
-  padding: 10px; 
-  border-radius: 6px; 
-  cursor: pointer; 
-  background: transparent; 
+.gfp-folder-header {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
   transition: background 0.2s;
 }
-.gfp-folder-header:hover { background: var(--gfp-bg-hover); }
 
-.gfp-folder-arrow { margin-right: 8px; font-size: 10px; width: 12px; transition: transform 0.2s; color: var(--gfp-text-sub); }
-.gfp-folder-arrow.expanded { transform: rotate(90deg); }
-.gfp-folder-name { flex: 1; font-size: 14px; font-weight: 500; }
-
-.gfp-folder-tools { opacity: 0; transition: opacity 0.2s; }
-.gfp-folder-header:hover .gfp-folder-tools { opacity: 1; }
-.gfp-tool-btn { border: none; background: none; color: var(--gfp-text-sub); cursor: pointer; font-size: 14px; padding: 4px; }
-.gfp-tool-btn:hover { color: var(--gfp-text-main); }
-
-/* 文件夹内的对话 */
-.gfp-chat-list { padding-left: 20px; display: none; margin-top: 4px; }
-.gfp-chat-list.show { display: block; }
-.gfp-chat-link { 
-  display: block; 
-  padding: 6px 10px; 
-  font-size: 13px; 
-  color: var(--gfp-text-sub); 
-  text-decoration: none; 
-  border-radius: 4px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.gfp-folder-header:hover {
+  background: var(--gfp-bg-hover);
 }
-.gfp-chat-link:hover { color: var(--gfp-accent); background: rgba(255,255,255,0.03); }
+
+.gfp-folder-arrow {
+  margin-right: 8px;
+  font-size: 10px;
+  width: 12px;
+  transition: transform 0.2s;
+  color: var(--gfp-text-sub);
+}
+
+.gfp-folder-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.gfp-folder-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.gfp-folder-tools {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gfp-folder-header:hover .gfp-folder-tools {
+  opacity: 1;
+}
+
+.gfp-tool-btn {
+  border: none;
+  background: none;
+  color: var(--gfp-text-sub);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+}
+
+.gfp-tool-btn:hover {
+  color: var(--gfp-text-main);
+}
+
+/* === 文件夹内的对话列表 (更新部分) === */
+.gfp-chat-list {
+  padding-left: 20px;
+  display: none;
+  margin-top: 4px;
+}
+
+.gfp-chat-list.show {
+  display: block;
+}
+
+/* 新的对话条目容器 */
+.gfp-chat-item-wrapper {
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 2px 0;
+}
+
+.gfp-chat-item-wrapper:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gfp-chat-link {
+  flex: 1;
+  display: block;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--gfp-text-sub);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gfp-chat-link:hover {
+  color: var(--gfp-accent);
+}
+
+/* 删除按钮 */
+.gfp-chat-delete-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gfp-text-sub);
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  margin-right: 4px;
+}
+
+.gfp-chat-item-wrapper:hover .gfp-chat-delete-btn {
+  opacity: 1;
+}
+
+.gfp-chat-delete-btn:hover {
+  color: var(--gfp-danger);
+  background: rgba(255, 100, 100, 0.1);
+  border-radius: 4px;
+}
 
 /* 模态框 */
-.gfp-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-.gfp-modal-overlay.active { opacity: 1; pointer-events: auto; }
-.gfp-modal { background: var(--gfp-bg-panel); width: 320px; border-radius: 12px; padding: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.6); color: var(--gfp-text-main); font-family: var(--gfp-font); }
-.gfp-modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
-.gfp-input { width: 100%; background: var(--gfp-bg-dark); border: 1px solid var(--gfp-border); color: white; padding: 10px; border-radius: 6px; box-sizing: border-box; margin-bottom: 20px; }
-.gfp-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-.gfp-btn-modal { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; }
-.gfp-btn-cancel { background: transparent; color: var(--gfp-text-main); border: 1px solid var(--gfp-border); }
-.gfp-btn-confirm { background: var(--gfp-accent); color: #000; font-weight: 500; }
+.gfp-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.gfp-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gfp-modal {
+  background: var(--gfp-bg-panel);
+  width: 320px;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  color: var(--gfp-text-main);
+  font-family: var(--gfp-font);
+}
+
+.gfp-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.gfp-input {
+  width: 100%;
+  background: var(--gfp-bg-dark);
+  border: 1px solid var(--gfp-border);
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  box-sizing: border-box;
+  margin-bottom: 20px;
+}
+
+.gfp-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.gfp-btn-modal {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.gfp-btn-cancel {
+  background: transparent;
+  color: var(--gfp-text-main);
+  border: 1px solid var(--gfp-border);
+}
+
+.gfp-btn-confirm {
+  background: var(--gfp-accent);
+  color: #000;
+  font-weight: 500;
+}
 
 /* 选择文件夹列表 */
-.gfp-select-list { max-height: 200px; overflow-y: auto; margin-bottom: 20px; border: 1px solid var(--gfp-border); border-radius: 6px; }
-.gfp-select-item { padding: 10px; cursor: pointer; border-bottom: 1px solid var(--gfp-border); font-size: 13px; }
-.gfp-select-item:hover { background: var(--gfp-bg-hover); }
-.gfp-select-item.selected { background: rgba(168, 199, 250, 0.1); color: var(--gfp-accent); border-left: 3px solid var(--gfp-accent); }
+.gfp-select-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  border: 1px solid var(--gfp-border);
+  border-radius: 6px;
+}
+
+.gfp-select-item {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gfp-border);
+  font-size: 13px;
+}
+
+.gfp-select-item:hover {
+  background: var(--gfp-bg-hover);
+}
+
+.gfp-select-item.selected {
+  background: rgba(168, 199, 250, 0.1);
+  color: var(--gfp-accent);
+  border-left: 3px solid var(--gfp-accent);
+}

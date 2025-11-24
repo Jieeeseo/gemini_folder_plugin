@@ -1,23 +1,23 @@
-// src/scripts/content.js - V16.0 (当前对话集成版)
+// src/scripts/content.js - V17.0 (支持删除对话版)
 const STORAGE_KEY = 'gemini_folder_data_v2';
 let state = {
-    folders: [], 
+    folders: [],
     sidebarOpen: false,
 };
 
 // 当前正在浏览的对话信息
 let currentViewingChat = { title: "", url: "", isValid: false };
-let currentFolderToEdit = null; // 用于重命名/删除
+let currentFolderToEdit = null; // 用于重命名/删除文件夹
 let selectedFolderIdForAdd = null; // 用于添加对话
 
 async function init() {
-    console.log("%c Gemini Folder Plugin [V16.0] ", "background: #008800; color: #fff; font-size: 16px; padding: 4px; border-radius: 4px;");
-    
+    console.log("%c Gemini Folder Plugin [V17.0] ", "background: #008888; color: #fff; font-size: 16px; padding: 4px; border-radius: 4px;");
+
     await loadData();
     injectSidebar();
     injectModals();
-    injectMenuButton(); 
-    
+    injectMenuButton();
+
     // 启动当前页面监控
     setInterval(checkCurrentPage, 1000);
 }
@@ -29,29 +29,23 @@ async function loadData() {
 
 async function saveData() {
     await chrome.storage.local.set({ [STORAGE_KEY]: state.folders });
-    renderFolderList(); 
+    renderFolderList();
 }
 
 // === 核心：监控当前正在查看的对话 ===
 function checkCurrentPage() {
     const url = window.location.href;
-    
+
     // 判断是否在对话页面
-    // 排除 /app 首页 (新建对话页)
     const isChat = url.includes('/app/') && !url.endsWith('/app') && !url.endsWith('/app/');
-    
+
     if (isChat) {
         // 提取标题
-        // 1. 尝试从 document.title 提取 (格式通常是 "Title - Gemini")
         let title = document.title.replace(' - Gemini', '').trim();
-        
-        // 2. 如果 title 是默认的 "Gemini"，尝试找页面里的 H1
         if (title === 'Gemini' || !title) {
             const h1 = document.querySelector('h1');
             if (h1) title = h1.innerText.trim();
         }
-        
-        // 3. 还是没有，就叫 "Current Chat"
         if (!title) title = "Current Chat";
 
         currentViewingChat = {
@@ -73,7 +67,7 @@ function checkCurrentPage() {
 function updateCurrentChatCard() {
     const titleEl = document.getElementById('gfp-current-title');
     const btnEl = document.getElementById('gfp-btn-save-current');
-    
+
     if (!titleEl || !btnEl) return;
 
     if (currentViewingChat.isValid) {
@@ -128,11 +122,11 @@ function injectSidebar() {
         </div>
     `;
     document.body.appendChild(sidebar);
-    
+
     // 绑定事件
     document.getElementById('gfp-close-btn').onclick = toggleSidebar;
     document.getElementById('gfp-btn-new-folder').onclick = () => openModal('create-folder');
-    
+
     document.getElementById('gfp-btn-save-current').onclick = () => {
         if (currentViewingChat.isValid) {
             openModal('select-folder');
@@ -189,7 +183,7 @@ function injectModals() {
 
     // 通用关闭事件
     const closeAll = () => document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.classList.remove('active'));
-    
+
     document.getElementById('gfp-cancel-create').onclick = closeAll;
     document.getElementById('gfp-cancel-select').onclick = closeAll;
     document.getElementById('gfp-cancel-edit').onclick = closeAll;
@@ -201,7 +195,7 @@ function injectModals() {
     document.getElementById('gfp-btn-delete').onclick = deleteFolder;
 }
 
-// === 渲染逻辑 ===
+// === 渲染逻辑 (包含删除功能) ===
 
 function renderFolderList() {
     const container = document.getElementById('gfp-folder-container');
@@ -229,16 +223,46 @@ function renderFolderList() {
         const listContainer = el.querySelector('.gfp-chat-list');
         const arrow = el.querySelector('.gfp-folder-arrow');
         const header = el.querySelector('.gfp-folder-header');
-        
+
         // 渲染文件夹内的对话链接
-        folder.chats.forEach(chat => {
-            const a = document.createElement('a');
-            a.className = 'gfp-chat-link';
-            a.href = chat.url;
-            a.innerText = chat.title;
-            a.title = chat.title; // tooltip
-            listContainer.appendChild(a);
-        });
+        if (folder.chats && folder.chats.length > 0) {
+            folder.chats.forEach((chat, chatIndex) => {
+                // 创建包裹容器
+                const wrapper = document.createElement('div');
+                wrapper.className = 'gfp-chat-item-wrapper';
+
+                // 创建链接
+                const a = document.createElement('a');
+                a.className = 'gfp-chat-link';
+                a.href = chat.url;
+                a.innerText = `• ${chat.title}`;
+                a.title = chat.title; // tooltip
+
+                // 创建删除按钮
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'gfp-chat-delete-btn';
+                deleteBtn.innerHTML = '×'; // 或者用 SVG 图标
+                deleteBtn.title = 'Remove from folder';
+
+                // 删除事件逻辑
+                deleteBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation(); // 防止触发链接跳转
+
+                    if (confirm(`Are you sure you want to remove "${chat.title}" from this folder?`)) {
+                        // 执行删除
+                        folder.chats.splice(chatIndex, 1);
+                        saveData(); // 保存并重新渲染
+                    }
+                };
+
+                wrapper.appendChild(a);
+                wrapper.appendChild(deleteBtn);
+                listContainer.appendChild(wrapper);
+            });
+        } else {
+            listContainer.innerHTML = '<div style="padding:5px 10px; color:#666; font-size:12px;">Empty</div>';
+        }
 
         // 折叠展开逻辑
         header.onclick = (e) => {
@@ -287,7 +311,7 @@ function toggleSidebar() {
 
 function openModal(type) {
     document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.classList.remove('active'));
-    
+
     if (type === 'create-folder') {
         document.getElementById('modal-create-folder').classList.add('active');
         document.getElementById('gfp-input-create').value = '';
@@ -307,7 +331,7 @@ function openModal(type) {
 function createNewFolder() {
     const name = document.getElementById('gfp-input-create').value.trim();
     if (!name) return;
-    
+
     state.folders.push({ id: Date.now(), name: name, chats: [] });
     saveData();
     document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.classList.remove('active'));
@@ -318,7 +342,7 @@ function saveChatToFolder() {
         alert("Select a folder!");
         return;
     }
-    
+
     const folder = state.folders.find(f => f.id === selectedFolderIdForAdd);
     if (folder && currentViewingChat.isValid) {
         // 查重
