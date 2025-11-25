@@ -45,10 +45,32 @@ class StorageService {
         return this.save();
     }
 
+    // === 核心修复：更智能的匹配逻辑 ===
+    
+    // 辅助：从 URL 中提取 Chat ID (例如 /app/abc12345 -> abc12345)
+    getChatId(url) {
+        try {
+            const match = url.match(/\/app\/([a-zA-Z0-9\-_]+)/);
+            return match ? match[1] : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     addChatToFolder(folderId, chatData) {
         const folder = this.folders.find(f => f.id === folderId);
         if (folder) {
-            const exists = folder.chats.some(c => c.url === chatData.url);
+            const newChatId = this.getChatId(chatData.url);
+
+            // 检查是否存在：优先对比 Chat ID，如果提取不到 ID 则回退到全 URL 对比
+            const exists = folder.chats.some(c => {
+                const existingId = this.getChatId(c.url);
+                if (newChatId && existingId) {
+                    return newChatId === existingId;
+                }
+                return c.url === chatData.url;
+            });
+
             if (!exists) {
                 folder.chats.push({
                     title: chatData.title,
@@ -69,9 +91,15 @@ class StorageService {
     findFoldersByUrl(url) {
         const savedInFolders = [];
         let primaryTitle = null;
+        const currentChatId = this.getChatId(url);
 
         for (const folder of this.folders) {
-            const found = folder.chats.find(c => c.url === url);
+            let found = folder.chats.find(c => c.url === url);
+            
+            if (!found && currentChatId) {
+                found = folder.chats.find(c => this.getChatId(c.url) === currentChatId);
+            }
+
             if (found) {
                 savedInFolders.push(folder.name);
                 if (!primaryTitle) primaryTitle = found.title;

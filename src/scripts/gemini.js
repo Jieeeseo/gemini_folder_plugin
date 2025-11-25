@@ -6,7 +6,35 @@ class GeminiAdapter {
     constructor() {
         this.lastCheckedUrl = "";
         this.navigationContext = null;
+        // 初始化时尝试恢复上下文
+        this.restoreContext();
     }
+
+    // === 新增：上下文持久化管理 ===
+    
+    setNavigationContext(context) {
+        this.navigationContext = context;
+        // 存入 SessionStorage，这样刷新页面后依然存在
+        sessionStorage.setItem('gfp_context', JSON.stringify(context));
+    }
+
+    restoreContext() {
+        try {
+            const stored = sessionStorage.getItem('gfp_context');
+            if (stored) {
+                this.navigationContext = JSON.parse(stored);
+            }
+        } catch (e) {
+            console.error("Failed to restore context", e);
+        }
+    }
+
+    clearNavigationContext() {
+        this.navigationContext = null;
+        sessionStorage.removeItem('gfp_context');
+    }
+
+    // ================================
 
     startMonitoring(callback) {
         this.monitorCallback = callback;
@@ -15,14 +43,21 @@ class GeminiAdapter {
 
     checkUrl() {
         const url = window.location.href;
-        if (url !== this.lastCheckedUrl) {
-            if (this.navigationContext && !url.includes(this.navigationContext.url)) {
-                this.navigationContext = null;
+        
+        // 检查：如果当前有上下文，但 URL 已经变了（且不包含上下文的 URL），说明用户切走了
+        if (this.navigationContext) {
+            // 简单的包含检查，防止参数变化导致失效
+            if (!url.includes(this.navigationContext.url) && !this.navigationContext.url.includes(url)) {
+                this.clearNavigationContext();
             }
+        }
+
+        if (url !== this.lastCheckedUrl) {
             this.lastCheckedUrl = url;
             
             if (this.monitorCallback) {
                 const info = this.detectCurrentChatInfo();
+                // 如果还在加载中但我们有上下文，手动补全，避免闪烁
                 if (!info.isValid && this.navigationContext && url.includes(this.navigationContext.url)) {
                      this.monitorCallback({ 
                          url, 
@@ -53,7 +88,7 @@ class GeminiAdapter {
 
         if (!isChat) return { title: "No active chat", url, isValid: false };
 
-        // 优先使用 context
+        // 优先使用上下文 (从 Storage 恢复的)
         if (this.navigationContext && url.includes(this.navigationContext.url)) {
             return {
                 title: this.navigationContext.title,

@@ -11,52 +11,70 @@ class UIManager {
         this.currentViewingChat = {};
         this.currentFolderToEdit = null;
         this.selectedFolderIdForAdd = null;
+        
+        // 定义根容器 ID，方便统一管理和清理
+        this.ROOT_ID = 'gfp-root';
     }
 
     init() {
+        // 1. 彻底清理旧元素
         this.cleanupOldDOM();
+        
+        // 2. 创建新的根容器
+        this.createRootContainer();
+
+        // 3. 注入组件到根容器
         this.injectMenuButton();
         this.injectSidebar();
         this.injectModals();
-        // 已移除 injectGhostButton 和 bindGlobalEvents
+        
+        // 4. 绑定事件
+        // 注意：无需 bindGlobalEvents，因为mousemove逻辑已移除
+    }
+
+    createRootContainer() {
+        const root = document.createElement('div');
+        root.id = this.ROOT_ID;
+        document.body.appendChild(root);
     }
 
     cleanupOldDOM() {
+        // 1. 移除根容器 (如果存在)
+        const existingRoot = document.getElementById(this.ROOT_ID);
+        if (existingRoot) existingRoot.remove();
+
+        // 2. 移除所有已知 ID 的残留元素 (兼容旧版本清理)
         const idsToRemove = [
             'gfp-menu-btn', 
             'gfp-sidebar',
-            'gfp-ghost-add-btn' // 清理可能残留的旧幽灵按钮
+            'gfp-ghost-add-btn',
+            'modal-create-folder',
+            'modal-select-folder',
+            'modal-folder-settings',
+            'gfp-select-list-container'
         ];
         idsToRemove.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.remove();
         });
 
-        document.querySelectorAll('.gfp-modal-overlay').forEach(el => {
-            if (el.parentElement && el.parentElement.tagName === 'DIV' && !el.parentElement.className) {
-                if (el.parentElement.children.length > 0 && el.parentElement.querySelector('#modal-create-folder')) {
-                     el.parentElement.remove();
-                } else {
-                    el.remove();
-                }
-            } else {
-                el.remove();
-            }
-        });
-        
-        const oldModals = document.getElementById('modal-create-folder');
-        if (oldModals && oldModals.parentElement) oldModals.parentElement.remove();
+        // 3. 移除残留的模态框遮罩层 (旧版本可能直接append到body)
+        document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.remove());
+    }
+
+    // 辅助：获取根容器
+    getRoot() {
+        return document.getElementById(this.ROOT_ID) || document.body;
     }
 
     // === DOM 注入 ===
     injectMenuButton() {
         const btn = document.createElement('div');
         btn.id = 'gfp-menu-btn';
-        // 使用 Icons.menu
         btn.innerHTML = Icons.menu;
         btn.title = "My Folders";
         btn.onclick = () => this.toggleSidebar();
-        document.body.appendChild(btn);
+        this.getRoot().appendChild(btn);
     }
 
     injectSidebar() {
@@ -65,7 +83,6 @@ class UIManager {
         sidebar.innerHTML = `
             <div class="gfp-sidebar-header">
                 <span class="gfp-sidebar-title">My Folders</span>
-                <!-- 使用 Icons.close -->
                 <button class="gfp-close-btn" id="gfp-close-btn">${Icons.close}</button>
             </div>
             
@@ -80,7 +97,6 @@ class UIManager {
             <div class="gfp-folders-section">
                 <div class="gfp-section-header">
                     <span>FOLDERS</span>
-                    <!-- 使用 Icons.plus -->
                     <button class="gfp-btn-icon" id="gfp-btn-new-folder" style="display:flex;align-items:center;gap:4px">
                         ${Icons.plus} New
                     </button>
@@ -88,7 +104,7 @@ class UIManager {
                 <div id="gfp-folder-container"></div>
             </div>
         `;
-        document.body.appendChild(sidebar);
+        this.getRoot().appendChild(sidebar);
 
         document.getElementById('gfp-close-btn').onclick = () => this.toggleSidebar();
         document.getElementById('gfp-btn-new-folder').onclick = () => this.openModal('create-folder');
@@ -100,8 +116,8 @@ class UIManager {
     }
 
     injectModals() {
-        const container = document.createElement('div');
-        container.innerHTML = `
+        // 直接将模态框 HTML 字符串拼接并注入根容器
+        const modalsHTML = `
             <div id="modal-create-folder" class="gfp-modal-overlay">
                 <div class="gfp-modal">
                     <div class="gfp-modal-title">New Folder</div>
@@ -119,6 +135,7 @@ class UIManager {
                     <label class="gfp-label">Chat Title</label>
                     <input type="text" class="gfp-input" id="gfp-input-save-title">
                     <label class="gfp-label">Select Folder</label>
+                    <!-- 确保这个容器 ID 唯一且存在 -->
                     <div class="gfp-select-list" id="gfp-select-list-container"></div>
                     <div class="gfp-modal-actions">
                         <button class="gfp-btn-modal gfp-btn-cancel" id="gfp-cancel-select">Cancel</button>
@@ -141,7 +158,16 @@ class UIManager {
                 </div>
             </div>
         `;
-        document.body.appendChild(container);
+        
+        // 创建一个临时容器来转换 HTML 字符串
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = modalsHTML;
+        
+        // 将所有模态框移动到 Root 容器
+        while (tempDiv.firstChild) {
+            this.getRoot().appendChild(tempDiv.firstChild);
+        }
+
         this.bindModalEvents();
     }
 
@@ -166,7 +192,6 @@ class UIManager {
                 return;
             }
             
-            // 逻辑简化：只处理当前查看的对话
             let finalTitle = document.getElementById('gfp-input-save-title').value.trim();
             if (!finalTitle || finalTitle.startsWith("Saved in:") || finalTitle === "Not Saved") {
                 finalTitle = this.currentViewingChat.title || "New Chat";
@@ -182,7 +207,6 @@ class UIManager {
             closeAll();
             this.renderFolderList();
             
-            // 核心修复：立即刷新状态，并传入当前对话信息，强制 UI 重绘
             this.updateCurrentChatState(this.currentViewingChat);
             
             if (!this.sidebarOpen) this.toggleSidebar();
@@ -228,7 +252,6 @@ class UIManager {
             }
             document.getElementById('modal-select-folder').classList.add('active');
 
-            // 逻辑简化：只预填充当前对话的标题
             let prefill = this.currentViewingChat.title;
 
             if (prefill === "Not Saved" || prefill.startsWith("Saved in:") || prefill === "Current Chat") {
@@ -237,6 +260,8 @@ class UIManager {
             }
             
             document.getElementById('gfp-input-save-title').value = prefill || "New Chat";
+            
+            // 关键：确保每次打开模态框都重新渲染列表
             this.renderSelectFolderList();
         } else if (type === 'edit-folder') {
             document.getElementById('modal-folder-settings').classList.add('active');
@@ -262,7 +287,6 @@ class UIManager {
                     <span class="gfp-folder-arrow">▶</span>
                     <span class="gfp-folder-name">${folder.name}</span>
                     <div class="gfp-folder-tools">
-                        <!-- 使用 Icons.settings -->
                         <button class="gfp-tool-btn setting-btn">${Icons.settings}</button>
                     </div>
                 </div>
@@ -280,18 +304,18 @@ class UIManager {
                     
                     const a = document.createElement('a');
                     a.className = 'gfp-chat-link';
-                    a.href = chat.url;
+                    a.style.cursor = 'pointer';
                     a.innerText = `• ${chat.title}`;
                     a.title = chat.title;
                     
                     a.onclick = (e) => {
                         e.preventDefault();
-                        this.gemini.navigationContext = {
+                        this.gemini.setNavigationContext({
                             url: chat.url,
                             title: chat.title,
                             folderName: folder.name,
                             contextTitle: chat.title 
-                        };
+                        });
 
                         if (chat.url.startsWith('simulate-click://')) {
                             const success = this.gemini.simulateClickByTitle(chat.title);
@@ -299,7 +323,7 @@ class UIManager {
                             if (success && this.sidebarOpen) this.toggleSidebar();
                         } else {
                             if (window.location.href === chat.url) {
-                                this.gemini.triggerDetect(); // 刷新状态
+                                window.location.reload();
                             } else {
                                 window.location.href = chat.url;
                             }
@@ -308,7 +332,6 @@ class UIManager {
 
                     const deleteBtn = document.createElement('div');
                     deleteBtn.className = 'gfp-chat-delete-btn';
-                    // 使用 Icons.close 作为移除按钮
                     deleteBtn.innerHTML = Icons.close;
                     deleteBtn.onclick = async (e) => {
                         e.preventDefault();
@@ -316,7 +339,6 @@ class UIManager {
                         if (confirm(`Remove "${chat.title}"?`)) {
                             await this.storage.removeChatFromFolder(folder, chatIndex);
                             this.renderFolderList();
-                            // 删除后立即刷新状态
                             this.updateCurrentChatState(this.currentViewingChat); 
                         }
                     };
@@ -347,10 +369,20 @@ class UIManager {
 
     renderSelectFolderList() {
         const container = document.getElementById('gfp-select-list-container');
-        if (!container) return;
+        // 安全检查：如果找不到容器，直接返回
+        if (!container) {
+            console.error("GFP Error: Select Folder List Container not found in DOM");
+            return;
+        }
         
         container.innerHTML = '';
         this.selectedFolderIdForAdd = null;
+
+        // 如果没有文件夹，显示提示
+        if (!this.storage.folders || this.storage.folders.length === 0) {
+            container.innerHTML = '<div style="padding:10px; color:#666; font-size:13px; text-align:center;">No folders created yet</div>';
+            return;
+        }
 
         this.storage.folders.forEach(folder => {
             const div = document.createElement('div');
@@ -396,14 +428,12 @@ class UIManager {
         if (chat.isValid) {
             if (chat.isSaved) {
                 if (chat.context) {
-                    // Contextual: 显示特定文件夹名和特定标题
                     labelEl.innerText = `SAVED IN: ${chat.context.folderName.toUpperCase()}`;
                     labelEl.style.color = "var(--gfp-success)";
                     titleEl.innerText = chat.context.contextTitle || chat.title;
                     titleEl.style.color = "var(--gfp-text-main)";
                     titleEl.classList.remove('allow-wrap');
                 } else {
-                    // Direct: 显示 STATUS 和所有文件夹
                     labelEl.innerText = "STATUS";
                     labelEl.style.color = "var(--gfp-text-sub)";
                     titleEl.innerText = `Saved in: ${chat.savedFolderName}`;
@@ -412,7 +442,6 @@ class UIManager {
                 }
                 btnEl.innerText = "Add to another Folder";
             } else {
-                // Not Saved
                 labelEl.innerText = "STATUS";
                 labelEl.style.color = "var(--gfp-text-sub)";
                 titleEl.innerText = "Not Saved";
