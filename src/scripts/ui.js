@@ -60,7 +60,7 @@ class UIManager {
     injectMenuButton() {
         const btn = document.createElement('div');
         btn.id = 'gfp-menu-btn';
-        btn.innerHTML = '<span>📁</span>';
+        btn.innerHTML = Icons.menu; 
         btn.title = "My Folders";
         btn.onclick = () => this.toggleSidebar();
         document.body.appendChild(btn);
@@ -72,7 +72,7 @@ class UIManager {
         sidebar.innerHTML = `
             <div class="gfp-sidebar-header">
                 <span class="gfp-sidebar-title">My Folders</span>
-                <button class="gfp-close-btn" id="gfp-close-btn">✕</button>
+                <button class="gfp-close-btn" id="gfp-close-btn">${Icons.close}</button>
             </div>
             
             <div class="gfp-current-chat-card">
@@ -86,7 +86,9 @@ class UIManager {
             <div class="gfp-folders-section">
                 <div class="gfp-section-header">
                     <span>FOLDERS</span>
-                    <button class="gfp-btn-icon" id="gfp-btn-new-folder">+ New</button>
+                    <button class="gfp-btn-icon" id="gfp-btn-new-folder" style="display:flex;align-items:center;gap:4px">
+                        ${Icons.plus} New
+                    </button>
                 </div>
                 <div id="gfp-folder-container"></div>
             </div>
@@ -152,7 +154,7 @@ class UIManager {
     injectGhostButton() {
         this.ghostBtn = document.createElement("div");
         this.ghostBtn.id = "gfp-ghost-add-btn";
-        this.ghostBtn.innerHTML = "＋";
+        this.ghostBtn.innerHTML = Icons.plus;
         this.ghostBtn.title = "Add to Folder";
         
         this.ghostBtn.onclick = (e) => {
@@ -335,7 +337,7 @@ class UIManager {
                     <span class="gfp-folder-arrow">▶</span>
                     <span class="gfp-folder-name">${folder.name}</span>
                     <div class="gfp-folder-tools">
-                        <button class="gfp-tool-btn setting-btn">⚙️</button>
+                        <button class="gfp-tool-btn setting-btn">${Icons.settings}</button>
                     </div>
                 </div>
                 <div class="gfp-chat-list"></div>
@@ -380,7 +382,7 @@ class UIManager {
 
                     const deleteBtn = document.createElement('div');
                     deleteBtn.className = 'gfp-chat-delete-btn';
-                    deleteBtn.innerHTML = '×';
+                    deleteBtn.innerHTML = Icons.close; 
                     deleteBtn.onclick = async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
