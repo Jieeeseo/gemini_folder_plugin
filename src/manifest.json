@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Gemini Folder Master",
-  "version": "1.2",
+  "version": "1.3",
   "description": "Custom folder management for Gemini chats with right sidebar",
   "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": ["https://gemini.google.com/*"],
       "js": [
-        "scripts/icons.js",   
+        "scripts/icons.js",
         "scripts/storage.js",
         "scripts/gemini.js",
         "scripts/ui.js",
