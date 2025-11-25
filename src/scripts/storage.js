@@ -45,9 +45,33 @@ class StorageService {
         return this.save();
     }
 
-    // === 核心修复：更智能的匹配逻辑 ===
-    
-    // 辅助：从 URL 中提取 Chat ID (例如 /app/abc12345 -> abc12345)
+    // === 文件夹排序 ===
+    reorderFolders(fromIndex, toIndex) {
+        if (fromIndex === toIndex) return Promise.resolve();
+        if (fromIndex < 0 || fromIndex >= this.folders.length || toIndex < 0 || toIndex >= this.folders.length) return Promise.resolve();
+        
+        const [movedFolder] = this.folders.splice(fromIndex, 1);
+        this.folders.splice(toIndex, 0, movedFolder);
+        
+        return this.save();
+    }
+
+    // === 新增：对话排序 (仅限同文件夹内) ===
+    reorderChats(folderId, fromIndex, toIndex) {
+        const folder = this.folders.find(f => f.id === folderId);
+        if (!folder) return Promise.resolve();
+        
+        if (fromIndex === toIndex) return Promise.resolve();
+        if (fromIndex < 0 || fromIndex >= folder.chats.length || toIndex < 0 || toIndex >= folder.chats.length) return Promise.resolve();
+
+        // 移动元素
+        const [movedChat] = folder.chats.splice(fromIndex, 1);
+        folder.chats.splice(toIndex, 0, movedChat);
+
+        return this.save();
+    }
+
+    // 辅助：从 URL 中提取 Chat ID
     getChatId(url) {
         try {
             const match = url.match(/\/app\/([a-zA-Z0-9\-_]+)/);
@@ -61,8 +85,6 @@ class StorageService {
         const folder = this.folders.find(f => f.id === folderId);
         if (folder) {
             const newChatId = this.getChatId(chatData.url);
-
-            // 检查是否存在：优先对比 Chat ID，如果提取不到 ID 则回退到全 URL 对比
             const exists = folder.chats.some(c => {
                 const existingId = this.getChatId(c.url);
                 if (newChatId && existingId) {
@@ -87,7 +109,6 @@ class StorageService {
         return this.save();
     }
 
-    // 查询当前 URL 是否已在某个文件夹中
     findFoldersByUrl(url) {
         const savedInFolders = [];
         let primaryTitle = null;
@@ -95,7 +116,6 @@ class StorageService {
 
         for (const folder of this.folders) {
             let found = folder.chats.find(c => c.url === url);
-            
             if (!found && currentChatId) {
                 found = folder.chats.find(c => this.getChatId(c.url) === currentChatId);
             }

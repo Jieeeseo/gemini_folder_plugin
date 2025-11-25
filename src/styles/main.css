@@ -1,97 +1,73 @@
-/* src/styles/main.css - Refactored Structure */
+/* src/styles/main.css - V28.1 Chat Drag & Drop Support */
 
-/* =========================================
-   1. 全局变量与配置 (Variables)
-   ========================================= */
+/* ... (保留前面的所有 root, menu-btn, sidebar 等样式) ... */
 :root {
-  /* 配色方案 (Dark Mode) */
-  --gfp-bg-dark: #1e1f20;      /* 侧边栏背景 */
-  --gfp-bg-panel: #2d2e2f;     /* 卡片背景 */
-  --gfp-bg-hover: #3c4043;     /* 悬停高亮 */
-  --gfp-text-main: #e3e3e3;    /* 主文字 */
-  --gfp-text-sub: #9aa0a6;     /* 次要文字 */
-  --gfp-accent: #a8c7fa;       /* 强调色 (蓝色) */
-  --gfp-border: #444746;       /* 边框颜色 */
-  --gfp-danger: #ff8b8b;       /* 警告/删除 */
-  --gfp-success: #81c995;      /* 成功/状态 */
-  
-  /* 布局与形状 */
+  --gfp-bg-dark: #1e1f20;
+  --gfp-bg-panel: #2d2e2f;
+  --gfp-bg-hover: #3c4043;
+  --gfp-text-main: #e3e3e3;
+  --gfp-text-sub: #9aa0a6;
+  --gfp-accent: #a8c7fa;
+  --gfp-border: #444746;
+  --gfp-danger: #ff8b8b;
+  --gfp-success: #81c995;
   --gfp-radius: 8px;
   --gfp-font: 'Google Sans', Roboto, sans-serif;
   --gfp-sidebar-width: 320px;
-
-  /* 层级管理 (Z-Index Layers) - 集中管理防止冲突 */
-  --gfp-z-menu-btn: 9990;      /* 菜单按钮 (需被侧边栏覆盖) */
-  --gfp-z-sidebar: 9995;       /* 侧边栏 */
-  --gfp-z-modal: 10000;        /* 模态框 (最高层) */
+  --gfp-z-menu-btn: 9990;
+  --gfp-z-sidebar: 9995;
+  --gfp-z-modal: 10000;
 }
 
-/* =========================================
-   2. 主菜单触发按钮 (Menu Button)
-   ========================================= */
 #gfp-menu-btn {
   position: fixed;
   top: 16px;
   right: 170px;
   z-index: var(--gfp-z-menu-btn);
-
   width: 36px;
   height: 36px;
   padding: 0;
   border-radius: 50%;
-  
   background: transparent;
   border: none;
   box-shadow: none;
   color: var(--gfp-text-sub);
-  
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  
   font-family: var(--gfp-font);
   transition: all 0.2s;
 }
-
 #gfp-menu-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--gfp-text-main);
 }
-
 #gfp-menu-btn span:first-child {
   font-size: 20px;
 }
 
-/* =========================================
-   4. 侧边栏容器 (Sidebar Layout)
-   ========================================= */
 #gfp-sidebar {
   position: fixed;
   top: 0;
-  right: calc(var(--gfp-sidebar-width) * -1 - 30px); /* 完全隐藏 */
+  right: calc(var(--gfp-sidebar-width) * -1 - 30px);
   width: var(--gfp-sidebar-width);
   height: 100vh;
-  
   background: var(--gfp-bg-dark);
   border-left: 1px solid var(--gfp-border);
   z-index: var(--gfp-z-sidebar);
-  
   display: flex;
   flex-direction: column;
   padding: 20px;
   box-sizing: border-box;
-  
   transition: right 0.3s ease-in-out;
   font-family: var(--gfp-font);
   color: var(--gfp-text-main);
   box-shadow: -5px 0 20px rgba(0, 0, 0, 0.6);
 }
-
 #gfp-sidebar.open {
   right: 0;
 }
-
 .gfp-sidebar-header {
   display: flex;
   justify-content: space-between;
@@ -100,12 +76,10 @@
   padding-bottom: 10px;
   border-bottom: 1px solid var(--gfp-border);
 }
-
 .gfp-sidebar-title {
   font-size: 18px;
   font-weight: 500;
 }
-
 .gfp-close-btn {
   background: none;
   border: none;
@@ -114,14 +88,10 @@
   cursor: pointer;
   padding: 4px;
 }
-
 .gfp-close-btn:hover {
   color: var(--gfp-text-main);
 }
 
-/* =========================================
-   5. 组件：状态卡片 (Status Card)
-   ========================================= */
 .gfp-current-chat-card {
   background: var(--gfp-bg-panel);
   border: 1px solid var(--gfp-accent);
@@ -130,7 +100,6 @@
   margin-bottom: 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-
 .gfp-card-label {
   font-size: 11px;
   text-transform: uppercase;
@@ -140,7 +109,6 @@
   font-weight: bold;
   line-height: 1.4;
 }
-
 .gfp-card-title {
   font-size: 16px;
   font-weight: 500;
@@ -151,19 +119,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .gfp-card-title.allow-wrap {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
   word-break: break-word;
 }
-
 .gfp-card-actions {
   display: flex;
   gap: 8px;
 }
-
 .gfp-btn-action {
   flex: 1;
   padding: 8px;
@@ -174,32 +139,25 @@
   font-weight: 500;
   transition: background 0.2s;
 }
-
 .gfp-btn-save {
   background: var(--gfp-accent);
   color: #000;
 }
-
 .gfp-btn-save:hover {
   background: #bfd6ff;
 }
-
 .gfp-btn-save.disabled {
   background: var(--gfp-border);
   color: var(--gfp-text-sub);
   cursor: not-allowed;
 }
 
-/* =========================================
-   6. 组件：文件夹列表 (Folders List)
-   ========================================= */
 .gfp-folders-section {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-
 .gfp-section-header {
   display: flex;
   justify-content: space-between;
@@ -208,7 +166,6 @@
   color: var(--gfp-text-sub);
   font-size: 13px;
 }
-
 .gfp-btn-icon {
   background: none;
   border: 1px solid var(--gfp-border);
@@ -218,18 +175,14 @@
   padding: 4px 8px;
   font-size: 12px;
 }
-
 .gfp-btn-icon:hover {
   background: var(--gfp-bg-hover);
 }
-
 #gfp-folder-container {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
 }
-
-/* 滚动条美化 */
 #gfp-folder-container::-webkit-scrollbar {
   width: 4px;
 }
@@ -238,8 +191,21 @@
   border-radius: 2px;
 }
 
+/* === 文件夹拖拽样式 === */
 .gfp-folder-item {
   margin-bottom: 6px;
+  cursor: grab;
+  border-top: 2px solid transparent;
+  transition: transform 0.2s, border-color 0.2s, opacity 0.2s;
+}
+.gfp-folder-item.dragging {
+  opacity: 0.4;
+  background: var(--gfp-bg-hover);
+  cursor: grabbing;
+}
+.gfp-folder-item.drag-over {
+  border-top: 2px solid var(--gfp-accent);
+  background: rgba(168, 199, 250, 0.05);
 }
 
 .gfp-folder-header {
@@ -247,15 +213,13 @@
   align-items: center;
   padding: 10px;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: inherit;
   background: transparent;
   transition: background 0.2s;
 }
-
 .gfp-folder-header:hover {
   background: var(--gfp-bg-hover);
 }
-
 .gfp-folder-arrow {
   margin-right: 8px;
   font-size: 10px;
@@ -263,26 +227,21 @@
   transition: transform 0.2s;
   color: var(--gfp-text-sub);
 }
-
 .gfp-folder-arrow.expanded {
   transform: rotate(90deg);
 }
-
 .gfp-folder-name {
   flex: 1;
   font-size: 14px;
   font-weight: 500;
 }
-
 .gfp-folder-tools {
   opacity: 0;
   transition: opacity 0.2s;
 }
-
 .gfp-folder-header:hover .gfp-folder-tools {
   opacity: 1;
 }
-
 .gfp-tool-btn {
   border: none;
   background: none;
@@ -291,30 +250,44 @@
   font-size: 14px;
   padding: 4px;
 }
-
 .gfp-tool-btn:hover {
   color: var(--gfp-text-main);
 }
 
 .gfp-chat-list {
   padding-left: 20px;
-  display: none; /* 默认折叠 */
+  display: none;
   margin-top: 4px;
+  cursor: default; 
 }
-
 .gfp-chat-list.show {
   display: block;
 }
 
+/* === 新增：对话拖拽样式 === */
 .gfp-chat-item-wrapper {
   display: flex;
   align-items: center;
   border-radius: 4px;
   padding: 2px 0;
+  /* 增加透明边框，防止拖拽经过时跳动 */
+  border-top: 2px solid transparent; 
+  transition: border-color 0.2s, background 0.2s;
+  cursor: grab;
 }
-
 .gfp-chat-item-wrapper:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+/* 对话拖拽中 */
+.gfp-chat-item-wrapper.dragging {
+  opacity: 0.5;
+  background: var(--gfp-bg-hover);
+  cursor: grabbing;
+}
+/* 对话拖拽经过 (显示提示线) */
+.gfp-chat-item-wrapper.drag-over {
+  border-top: 2px solid var(--gfp-success); /* 绿色提示线，区别于文件夹 */
+  background: rgba(129, 201, 149, 0.1);
 }
 
 .gfp-chat-link {
@@ -328,11 +301,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .gfp-chat-link:hover {
   color: var(--gfp-accent);
 }
-
 .gfp-chat-delete-btn {
   width: 20px;
   height: 20px;
@@ -346,18 +317,14 @@
   transition: opacity 0.2s;
   margin-right: 4px;
 }
-
 .gfp-chat-item-wrapper:hover .gfp-chat-delete-btn {
   opacity: 1;
 }
-
 .gfp-chat-delete-btn:hover {
   color: var(--gfp-danger);
 }
 
-/* =========================================
-   7. 模态框 (Modals)
-   ========================================= */
+/* ... (保留 modals 等样式) ... */
 .gfp-modal-overlay {
   position: fixed;
   top: 0;
@@ -366,21 +333,17 @@
   height: 100%;
   background: rgba(0, 0, 0, 0.6);
   z-index: var(--gfp-z-modal);
-  
   display: flex;
   justify-content: center;
   align-items: center;
-  
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
 }
-
 .gfp-modal-overlay.active {
   opacity: 1;
   pointer-events: auto;
 }
-
 .gfp-modal {
   background: var(--gfp-bg-panel);
   width: 340px;
@@ -390,13 +353,11 @@
   color: var(--gfp-text-main);
   font-family: var(--gfp-font);
 }
-
 .gfp-modal-title {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
 }
-
 .gfp-input {
   width: 100%;
   background: var(--gfp-bg-dark);
@@ -407,25 +368,21 @@
   box-sizing: border-box;
   margin-bottom: 16px;
 }
-
 .gfp-input:focus {
   outline: 2px solid var(--gfp-accent);
   border-color: transparent;
 }
-
 .gfp-label {
   font-size: 12px;
   color: var(--gfp-text-sub);
   margin-bottom: 6px;
   display: block;
 }
-
 .gfp-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
-
 .gfp-btn-modal {
   padding: 8px 16px;
   border-radius: 6px;
@@ -433,20 +390,16 @@
   cursor: pointer;
   font-size: 13px;
 }
-
 .gfp-btn-cancel {
   background: transparent;
   color: var(--gfp-text-main);
   border: 1px solid var(--gfp-border);
 }
-
 .gfp-btn-confirm {
   background: var(--gfp-accent);
   color: #000;
   font-weight: 500;
 }
-
-/* 选择文件夹列表 (Modal内部) */
 .gfp-select-list {
   max-height: 180px;
   overflow-y: auto;
@@ -454,22 +407,18 @@
   border: 1px solid var(--gfp-border);
   border-radius: 6px;
 }
-
 .gfp-select-item {
   padding: 10px;
   cursor: pointer;
   border-bottom: 1px solid var(--gfp-border);
   font-size: 13px;
 }
-
 .gfp-select-item:last-child {
   border-bottom: none;
 }
-
 .gfp-select-item:hover {
   background: var(--gfp-bg-hover);
 }
-
 .gfp-select-item.selected {
   background: rgba(168, 199, 250, 0.1);
   color: var(--gfp-accent);

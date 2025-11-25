@@ -12,24 +12,19 @@ class UIManager {
         this.currentFolderToEdit = null;
         this.selectedFolderIdForAdd = null;
         
-        // 定义根容器 ID，方便统一管理和清理
         this.ROOT_ID = 'gfp-root';
+        
+        // 拖拽状态
+        this.dragSrcIndex = null; // 文件夹拖拽源索引
+        this.dragSrcChat = null;  // 对话拖拽源 { folderId, index }
     }
 
     init() {
-        // 1. 彻底清理旧元素
         this.cleanupOldDOM();
-        
-        // 2. 创建新的根容器
         this.createRootContainer();
-
-        // 3. 注入组件到根容器
         this.injectMenuButton();
         this.injectSidebar();
         this.injectModals();
-        
-        // 4. 绑定事件
-        // 注意：无需 bindGlobalEvents，因为mousemove逻辑已移除
     }
 
     createRootContainer() {
@@ -39,11 +34,9 @@ class UIManager {
     }
 
     cleanupOldDOM() {
-        // 1. 移除根容器 (如果存在)
         const existingRoot = document.getElementById(this.ROOT_ID);
         if (existingRoot) existingRoot.remove();
 
-        // 2. 移除所有已知 ID 的残留元素 (兼容旧版本清理)
         const idsToRemove = [
             'gfp-menu-btn', 
             'gfp-sidebar',
@@ -58,16 +51,13 @@ class UIManager {
             if (el) el.remove();
         });
 
-        // 3. 移除残留的模态框遮罩层 (旧版本可能直接append到body)
         document.querySelectorAll('.gfp-modal-overlay').forEach(el => el.remove());
     }
 
-    // 辅助：获取根容器
     getRoot() {
         return document.getElementById(this.ROOT_ID) || document.body;
     }
 
-    // === DOM 注入 ===
     injectMenuButton() {
         const btn = document.createElement('div');
         btn.id = 'gfp-menu-btn';
@@ -116,7 +106,6 @@ class UIManager {
     }
 
     injectModals() {
-        // 直接将模态框 HTML 字符串拼接并注入根容器
         const modalsHTML = `
             <div id="modal-create-folder" class="gfp-modal-overlay">
                 <div class="gfp-modal">
@@ -135,7 +124,6 @@ class UIManager {
                     <label class="gfp-label">Chat Title</label>
                     <input type="text" class="gfp-input" id="gfp-input-save-title">
                     <label class="gfp-label">Select Folder</label>
-                    <!-- 确保这个容器 ID 唯一且存在 -->
                     <div class="gfp-select-list" id="gfp-select-list-container"></div>
                     <div class="gfp-modal-actions">
                         <button class="gfp-btn-modal gfp-btn-cancel" id="gfp-cancel-select">Cancel</button>
@@ -159,11 +147,8 @@ class UIManager {
             </div>
         `;
         
-        // 创建一个临时容器来转换 HTML 字符串
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = modalsHTML;
-        
-        // 将所有模态框移动到 Root 容器
         while (tempDiv.firstChild) {
             this.getRoot().appendChild(tempDiv.firstChild);
         }
@@ -206,9 +191,7 @@ class UIManager {
             
             closeAll();
             this.renderFolderList();
-            
             this.updateCurrentChatState(this.currentViewingChat);
-            
             if (!this.sidebarOpen) this.toggleSidebar();
         };
 
@@ -231,7 +214,6 @@ class UIManager {
         };
     }
 
-    // === 渲染逻辑 ===
     toggleSidebar() {
         this.sidebarOpen = !this.sidebarOpen;
         const sidebar = document.getElementById('gfp-sidebar');
@@ -253,15 +235,11 @@ class UIManager {
             document.getElementById('modal-select-folder').classList.add('active');
 
             let prefill = this.currentViewingChat.title;
-
             if (prefill === "Not Saved" || prefill.startsWith("Saved in:") || prefill === "Current Chat") {
                  let t = document.title.replace(' - Gemini', '').trim();
                  if (t && t !== "Gemini") prefill = t;
             }
-            
             document.getElementById('gfp-input-save-title').value = prefill || "New Chat";
-            
-            // 关键：确保每次打开模态框都重新渲染列表
             this.renderSelectFolderList();
         } else if (type === 'edit-folder') {
             document.getElementById('modal-folder-settings').classList.add('active');
@@ -279,9 +257,58 @@ class UIManager {
             return;
         }
 
-        this.storage.folders.forEach(folder => {
+        this.storage.folders.forEach((folder, index) => {
             const el = document.createElement('div');
             el.className = 'gfp-folder-item';
+            
+            // === 文件夹拖拽逻辑 ===
+            el.draggable = true;
+            el.dataset.index = index;
+
+            el.addEventListener('dragstart', (e) => {
+                // 如果点击的是对话项，不要触发文件夹拖拽
+                if (e.target.closest('.gfp-chat-item-wrapper')) return;
+                
+                this.dragSrcIndex = index;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', index);
+                el.classList.add('dragging');
+            });
+
+            el.addEventListener('dragend', (e) => {
+                el.classList.remove('dragging');
+                this.dragSrcIndex = null;
+                container.querySelectorAll('.gfp-folder-item').forEach(item => item.classList.remove('drag-over'));
+            });
+
+            el.addEventListener('dragover', (e) => {
+                // 如果正在拖拽的是对话，不要响应文件夹的拖拽
+                if (this.dragSrcChat) return;
+                
+                if (this.dragSrcIndex === null) return; 
+                
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                el.classList.add('drag-over');
+                
+                Array.from(container.children).forEach(child => {
+                    if (child !== el) child.classList.remove('drag-over');
+                });
+            });
+
+            el.addEventListener('drop', async (e) => {
+                e.stopPropagation();
+                if (this.dragSrcIndex === null) return; // 仅响应文件夹拖放
+                
+                el.classList.remove('drag-over');
+                const targetIndex = parseInt(el.dataset.index);
+                if (this.dragSrcIndex !== null && this.dragSrcIndex !== targetIndex) {
+                    await this.storage.reorderFolders(this.dragSrcIndex, targetIndex);
+                    this.renderFolderList();
+                }
+                return false;
+            });
+
             el.innerHTML = `
                 <div class="gfp-folder-header">
                     <span class="gfp-folder-arrow">▶</span>
@@ -302,6 +329,74 @@ class UIManager {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'gfp-chat-item-wrapper';
                     
+                    // === 新增：对话拖拽逻辑 ===
+                    wrapper.draggable = true;
+                    
+                    // 1. 开始拖拽
+                    wrapper.addEventListener('dragstart', (e) => {
+                        e.stopPropagation(); // 阻止冒泡，不要触发文件夹的 dragstart
+                        this.dragSrcChat = { folderId: folder.id, index: chatIndex };
+                        e.dataTransfer.effectAllowed = 'move';
+                        wrapper.classList.add('dragging');
+                    });
+
+                    // 2. 结束拖拽
+                    wrapper.addEventListener('dragend', (e) => {
+                        e.stopPropagation();
+                        wrapper.classList.remove('dragging');
+                        this.dragSrcChat = null;
+                        // 清理高亮
+                        container.querySelectorAll('.gfp-chat-item-wrapper.drag-over').forEach(i => i.classList.remove('drag-over'));
+                    });
+
+                    // 3. 经过目标
+                    wrapper.addEventListener('dragover', (e) => {
+                        // 如果当前拖拽的不是对话，或者不是同一个文件夹的对话，直接忽略
+                        if (!this.dragSrcChat || this.dragSrcChat.folderId !== folder.id) return;
+
+                        e.stopPropagation(); // 阻止冒泡给文件夹
+                        e.preventDefault();  // 允许放置
+                        e.dataTransfer.dropEffect = 'move';
+                        wrapper.classList.add('drag-over');
+                        
+                        // 清理兄弟元素高亮
+                        Array.from(listContainer.children).forEach(child => {
+                            if (child !== wrapper) child.classList.remove('drag-over');
+                        });
+                    });
+
+                    // 4. 放置
+                    wrapper.addEventListener('drop', async (e) => {
+                        e.stopPropagation();
+                        // 严格检查：必须是同一个文件夹
+                        if (!this.dragSrcChat || this.dragSrcChat.folderId !== folder.id) return;
+
+                        wrapper.classList.remove('drag-over');
+                        const fromIndex = this.dragSrcChat.index;
+                        const toIndex = chatIndex;
+
+                        if (fromIndex !== toIndex) {
+                            await this.storage.reorderChats(folder.id, fromIndex, toIndex);
+                            this.renderFolderList();
+                            // 恢复展开状态 (简单处理：重新渲染后默认是折叠的，如果需要保持展开可能需要额外状态管理，这里暂略)
+                            // 也可以在这里手动再次展开该文件夹
+                            // 简易实现：重新渲染后找到对应文件夹并点击展开
+                            setTimeout(() => {
+                                const newFolderEl = container.children[index]; // 索引未变
+                                if(newFolderEl) {
+                                    const header = newFolderEl.querySelector('.gfp-folder-header');
+                                    const arrow = newFolderEl.querySelector('.gfp-folder-arrow');
+                                    const list = newFolderEl.querySelector('.gfp-chat-list');
+                                    if(list && arrow) {
+                                        list.classList.add('show');
+                                        arrow.classList.add('expanded');
+                                        arrow.innerText = '▼';
+                                    }
+                                }
+                            }, 0);
+                        }
+                    });
+
                     const a = document.createElement('a');
                     a.className = 'gfp-chat-link';
                     a.style.cursor = 'pointer';
@@ -369,7 +464,6 @@ class UIManager {
 
     renderSelectFolderList() {
         const container = document.getElementById('gfp-select-list-container');
-        // 安全检查：如果找不到容器，直接返回
         if (!container) {
             console.error("GFP Error: Select Folder List Container not found in DOM");
             return;
@@ -378,7 +472,6 @@ class UIManager {
         container.innerHTML = '';
         this.selectedFolderIdForAdd = null;
 
-        // 如果没有文件夹，显示提示
         if (!this.storage.folders || this.storage.folders.length === 0) {
             container.innerHTML = '<div style="padding:10px; color:#666; font-size:13px; text-align:center;">No folders created yet</div>';
             return;
@@ -397,7 +490,6 @@ class UIManager {
         });
     }
 
-    // 更新当前查看的聊天状态卡片
     updateCurrentChatState(chatInfo) {
         if (chatInfo) {
             const { savedInFolders, primaryTitle } = this.storage.findFoldersByUrl(chatInfo.url);
