@@ -11,12 +11,13 @@ class UIManager {
         this.currentViewingChat = {};
         this.currentFolderToEdit = null;
         this.selectedFolderIdForAdd = null;
+        this.chatToRename = null; // 用于存储当前正在重命名的对话信息 { folderId, index }
         
         this.ROOT_ID = 'gfp-root';
         
         // 拖拽状态
-        this.dragSrcIndex = null; // 文件夹拖拽源索引
-        this.dragSrcChat = null;  // 对话拖拽源 { folderId, index }
+        this.dragSrcIndex = null;
+        this.dragSrcChat = null;
     }
 
     init() {
@@ -44,6 +45,7 @@ class UIManager {
             'modal-create-folder',
             'modal-select-folder',
             'modal-folder-settings',
+            'modal-rename-chat', // 新增清理
             'gfp-select-list-container'
         ];
         idsToRemove.forEach(id => {
@@ -145,6 +147,18 @@ class UIManager {
                     </div>
                 </div>
             </div>
+
+            <!-- 新增：重命名对话模态框 -->
+            <div id="modal-rename-chat" class="gfp-modal-overlay">
+                <div class="gfp-modal">
+                    <div class="gfp-modal-title">Rename Chat</div>
+                    <input type="text" class="gfp-input" id="gfp-input-rename-chat">
+                    <div class="gfp-modal-actions">
+                        <button class="gfp-btn-modal gfp-btn-cancel" id="gfp-cancel-rename-chat">Cancel</button>
+                        <button class="gfp-btn-modal gfp-btn-confirm" id="gfp-confirm-rename-chat">Save</button>
+                    </div>
+                </div>
+            </div>
         `;
         
         const tempDiv = document.createElement('div');
@@ -162,6 +176,7 @@ class UIManager {
         document.getElementById('gfp-cancel-create').onclick = closeAll;
         document.getElementById('gfp-cancel-select').onclick = closeAll;
         document.getElementById('gfp-cancel-edit').onclick = closeAll;
+        document.getElementById('gfp-cancel-rename-chat').onclick = closeAll; // 新增取消
 
         document.getElementById('gfp-confirm-create').onclick = async () => {
             const name = document.getElementById('gfp-input-create').value.trim();
@@ -212,6 +227,18 @@ class UIManager {
                 this.renderFolderList();
             }
         };
+
+        // 新增：确认重命名对话
+        document.getElementById('gfp-confirm-rename-chat').onclick = async () => {
+            const name = document.getElementById('gfp-input-rename-chat').value.trim();
+            if (name && this.chatToRename) {
+                await this.storage.renameChat(this.chatToRename.folderId, this.chatToRename.index, name);
+                closeAll();
+                this.renderFolderList();
+                // 如果当前正在查看这个对话，刷新一下状态栏标题
+                this.updateCurrentChatState(this.currentViewingChat);
+            }
+        };
     }
 
     toggleSidebar() {
@@ -244,6 +271,14 @@ class UIManager {
         } else if (type === 'edit-folder') {
             document.getElementById('modal-folder-settings').classList.add('active');
             document.getElementById('gfp-input-rename').value = this.currentFolderToEdit.name;
+        } else if (type === 'rename-chat') {
+            // 新增：打开重命名对话模态框
+            document.getElementById('modal-rename-chat').classList.add('active');
+            // 获取当前标题并预填
+            const folder = this.storage.folders.find(f => f.id === this.chatToRename.folderId);
+            if (folder && folder.chats[this.chatToRename.index]) {
+                document.getElementById('gfp-input-rename-chat').value = folder.chats[this.chatToRename.index].title;
+            }
         }
     }
 
@@ -261,14 +296,11 @@ class UIManager {
             const el = document.createElement('div');
             el.className = 'gfp-folder-item';
             
-            // === 文件夹拖拽逻辑 ===
             el.draggable = true;
             el.dataset.index = index;
 
             el.addEventListener('dragstart', (e) => {
-                // 如果点击的是对话项，不要触发文件夹拖拽
                 if (e.target.closest('.gfp-chat-item-wrapper')) return;
-                
                 this.dragSrcIndex = index;
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', index);
@@ -282,15 +314,11 @@ class UIManager {
             });
 
             el.addEventListener('dragover', (e) => {
-                // 如果正在拖拽的是对话，不要响应文件夹的拖拽
                 if (this.dragSrcChat) return;
-                
                 if (this.dragSrcIndex === null) return; 
-                
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 el.classList.add('drag-over');
-                
                 Array.from(container.children).forEach(child => {
                     if (child !== el) child.classList.remove('drag-over');
                 });
@@ -298,8 +326,7 @@ class UIManager {
 
             el.addEventListener('drop', async (e) => {
                 e.stopPropagation();
-                if (this.dragSrcIndex === null) return; // 仅响应文件夹拖放
-                
+                if (this.dragSrcIndex === null) return; 
                 el.classList.remove('drag-over');
                 const targetIndex = parseInt(el.dataset.index);
                 if (this.dragSrcIndex !== null && this.dragSrcIndex !== targetIndex) {
@@ -329,60 +356,44 @@ class UIManager {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'gfp-chat-item-wrapper';
                     
-                    // === 新增：对话拖拽逻辑 ===
                     wrapper.draggable = true;
                     
-                    // 1. 开始拖拽
                     wrapper.addEventListener('dragstart', (e) => {
-                        e.stopPropagation(); // 阻止冒泡，不要触发文件夹的 dragstart
+                        e.stopPropagation();
                         this.dragSrcChat = { folderId: folder.id, index: chatIndex };
                         e.dataTransfer.effectAllowed = 'move';
                         wrapper.classList.add('dragging');
                     });
 
-                    // 2. 结束拖拽
                     wrapper.addEventListener('dragend', (e) => {
                         e.stopPropagation();
                         wrapper.classList.remove('dragging');
                         this.dragSrcChat = null;
-                        // 清理高亮
                         container.querySelectorAll('.gfp-chat-item-wrapper.drag-over').forEach(i => i.classList.remove('drag-over'));
                     });
 
-                    // 3. 经过目标
                     wrapper.addEventListener('dragover', (e) => {
-                        // 如果当前拖拽的不是对话，或者不是同一个文件夹的对话，直接忽略
                         if (!this.dragSrcChat || this.dragSrcChat.folderId !== folder.id) return;
-
-                        e.stopPropagation(); // 阻止冒泡给文件夹
-                        e.preventDefault();  // 允许放置
+                        e.stopPropagation(); 
+                        e.preventDefault(); 
                         e.dataTransfer.dropEffect = 'move';
                         wrapper.classList.add('drag-over');
-                        
-                        // 清理兄弟元素高亮
                         Array.from(listContainer.children).forEach(child => {
                             if (child !== wrapper) child.classList.remove('drag-over');
                         });
                     });
 
-                    // 4. 放置
                     wrapper.addEventListener('drop', async (e) => {
                         e.stopPropagation();
-                        // 严格检查：必须是同一个文件夹
                         if (!this.dragSrcChat || this.dragSrcChat.folderId !== folder.id) return;
-
                         wrapper.classList.remove('drag-over');
                         const fromIndex = this.dragSrcChat.index;
                         const toIndex = chatIndex;
-
                         if (fromIndex !== toIndex) {
                             await this.storage.reorderChats(folder.id, fromIndex, toIndex);
                             this.renderFolderList();
-                            // 恢复展开状态 (简单处理：重新渲染后默认是折叠的，如果需要保持展开可能需要额外状态管理，这里暂略)
-                            // 也可以在这里手动再次展开该文件夹
-                            // 简易实现：重新渲染后找到对应文件夹并点击展开
                             setTimeout(() => {
-                                const newFolderEl = container.children[index]; // 索引未变
+                                const newFolderEl = container.children[index]; 
                                 if(newFolderEl) {
                                     const header = newFolderEl.querySelector('.gfp-folder-header');
                                     const arrow = newFolderEl.querySelector('.gfp-folder-arrow');
@@ -425,6 +436,19 @@ class UIManager {
                         }
                     };
 
+                    // === 新增：编辑按钮 ===
+                    const editBtn = document.createElement('div');
+                    editBtn.className = 'gfp-chat-edit-btn'; // 使用新样式
+                    editBtn.innerHTML = Icons.edit;
+                    editBtn.title = 'Rename chat';
+                    editBtn.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // 记录要重命名的对话信息
+                        this.chatToRename = { folderId: folder.id, index: chatIndex };
+                        this.openModal('rename-chat');
+                    };
+
                     const deleteBtn = document.createElement('div');
                     deleteBtn.className = 'gfp-chat-delete-btn';
                     deleteBtn.innerHTML = Icons.close;
@@ -439,6 +463,7 @@ class UIManager {
                     };
 
                     wrapper.appendChild(a);
+                    wrapper.appendChild(editBtn); // 插入编辑按钮
                     wrapper.appendChild(deleteBtn);
                     listContainer.appendChild(wrapper);
                 });

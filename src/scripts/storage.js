@@ -45,6 +45,16 @@ class StorageService {
         return this.save();
     }
 
+    // === 新增：重命名对话 ===
+    renameChat(folderId, chatIndex, newTitle) {
+        const folder = this.folders.find(f => f.id === folderId);
+        if (folder && folder.chats[chatIndex]) {
+            folder.chats[chatIndex].title = newTitle;
+            return this.save();
+        }
+        return Promise.resolve();
+    }
+
     // === 文件夹排序 ===
     reorderFolders(fromIndex, toIndex) {
         if (fromIndex === toIndex) return Promise.resolve();
@@ -56,7 +66,7 @@ class StorageService {
         return this.save();
     }
 
-    // === 新增：对话排序 (仅限同文件夹内) ===
+    // === 对话排序 (仅限同文件夹内) ===
     reorderChats(folderId, fromIndex, toIndex) {
         const folder = this.folders.find(f => f.id === folderId);
         if (!folder) return Promise.resolve();
@@ -64,7 +74,6 @@ class StorageService {
         if (fromIndex === toIndex) return Promise.resolve();
         if (fromIndex < 0 || fromIndex >= folder.chats.length || toIndex < 0 || toIndex >= folder.chats.length) return Promise.resolve();
 
-        // 移动元素
         const [movedChat] = folder.chats.splice(fromIndex, 1);
         folder.chats.splice(toIndex, 0, movedChat);
 

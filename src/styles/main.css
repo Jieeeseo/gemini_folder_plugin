@@ -1,6 +1,6 @@
-/* src/styles/main.css - V28.1 Chat Drag & Drop Support */
+/* src/styles/main.css - V29.0 Chat Rename Support */
 
-/* ... (保留前面的所有 root, menu-btn, sidebar 等样式) ... */
+/* ... (保留所有之前的 CSS) ... */
 :root {
   --gfp-bg-dark: #1e1f20;
   --gfp-bg-panel: #2d2e2f;
@@ -19,6 +19,7 @@
   --gfp-z-modal: 10000;
 }
 
+/* ... (省略未修改的 menu-btn, sidebar, card 等样式，保持原样) ... */
 #gfp-menu-btn {
   position: fixed;
   top: 16px;
@@ -191,7 +192,6 @@
   border-radius: 2px;
 }
 
-/* === 文件夹拖拽样式 === */
 .gfp-folder-item {
   margin-bottom: 6px;
   cursor: grab;
@@ -264,13 +264,11 @@
   display: block;
 }
 
-/* === 新增：对话拖拽样式 === */
 .gfp-chat-item-wrapper {
   display: flex;
   align-items: center;
   border-radius: 4px;
   padding: 2px 0;
-  /* 增加透明边框，防止拖拽经过时跳动 */
   border-top: 2px solid transparent; 
   transition: border-color 0.2s, background 0.2s;
   cursor: grab;
@@ -278,15 +276,13 @@
 .gfp-chat-item-wrapper:hover {
   background: rgba(255, 255, 255, 0.03);
 }
-/* 对话拖拽中 */
 .gfp-chat-item-wrapper.dragging {
   opacity: 0.5;
   background: var(--gfp-bg-hover);
   cursor: grabbing;
 }
-/* 对话拖拽经过 (显示提示线) */
 .gfp-chat-item-wrapper.drag-over {
-  border-top: 2px solid var(--gfp-success); /* 绿色提示线，区别于文件夹 */
+  border-top: 2px solid var(--gfp-success);
   background: rgba(129, 201, 149, 0.1);
 }
 
@@ -304,6 +300,7 @@
 .gfp-chat-link:hover {
   color: var(--gfp-accent);
 }
+
 .gfp-chat-delete-btn {
   width: 20px;
   height: 20px;
@@ -324,7 +321,28 @@
   color: var(--gfp-danger);
 }
 
-/* ... (保留 modals 等样式) ... */
+/* === 新增：编辑按钮样式 === */
+.gfp-chat-edit-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gfp-text-sub);
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  margin-right: 2px; /* 和删除按钮保持一点间距 */
+}
+.gfp-chat-item-wrapper:hover .gfp-chat-edit-btn {
+  opacity: 1;
+}
+.gfp-chat-edit-btn:hover {
+  color: var(--gfp-text-main);
+}
+
+/* ... (保留 modals 样式) ... */
 .gfp-modal-overlay {
   position: fixed;
   top: 0;
