@@ -11,7 +11,7 @@ class UIManager {
         this.currentViewingChat = {};
         this.currentFolderToEdit = null;
         this.selectedFolderIdForAdd = null;
-        this.chatToRename = null; // 用于存储当前正在重命名的对话信息 { folderId, index }
+        this.chatToRename = null; 
         
         this.ROOT_ID = 'gfp-root';
         
@@ -45,7 +45,7 @@ class UIManager {
             'modal-create-folder',
             'modal-select-folder',
             'modal-folder-settings',
-            'modal-rename-chat', // 新增清理
+            'modal-rename-chat',
             'gfp-select-list-container'
         ];
         idsToRemove.forEach(id => {
@@ -108,6 +108,7 @@ class UIManager {
     }
 
     injectModals() {
+        // 在 HTML 中添加 placeholder
         const modalsHTML = `
             <div id="modal-create-folder" class="gfp-modal-overlay">
                 <div class="gfp-modal">
@@ -124,7 +125,7 @@ class UIManager {
                 <div class="gfp-modal">
                     <div class="gfp-modal-title">Save to Folder</div>
                     <label class="gfp-label">Chat Title</label>
-                    <input type="text" class="gfp-input" id="gfp-input-save-title">
+                    <input type="text" class="gfp-input" id="gfp-input-save-title" placeholder="Please enter a chat name">
                     <label class="gfp-label">Select Folder</label>
                     <div class="gfp-select-list" id="gfp-select-list-container"></div>
                     <div class="gfp-modal-actions">
@@ -148,7 +149,6 @@ class UIManager {
                 </div>
             </div>
 
-            <!-- 新增：重命名对话模态框 -->
             <div id="modal-rename-chat" class="gfp-modal-overlay">
                 <div class="gfp-modal">
                     <div class="gfp-modal-title">Rename Chat</div>
@@ -176,7 +176,7 @@ class UIManager {
         document.getElementById('gfp-cancel-create').onclick = closeAll;
         document.getElementById('gfp-cancel-select').onclick = closeAll;
         document.getElementById('gfp-cancel-edit').onclick = closeAll;
-        document.getElementById('gfp-cancel-rename-chat').onclick = closeAll; // 新增取消
+        document.getElementById('gfp-cancel-rename-chat').onclick = closeAll;
 
         document.getElementById('gfp-confirm-create').onclick = async () => {
             const name = document.getElementById('gfp-input-create').value.trim();
@@ -186,15 +186,22 @@ class UIManager {
             this.renderFolderList();
         };
 
+        // === 核心修改：保存对话逻辑 ===
         document.getElementById('gfp-confirm-save').onclick = async () => {
+            // 1. 检查是否选择文件夹
             if (!this.selectedFolderIdForAdd) {
-                alert("Select a folder!");
+                alert("Please select a folder!");
                 return;
             }
             
-            let finalTitle = document.getElementById('gfp-input-save-title').value.trim();
-            if (!finalTitle || finalTitle.startsWith("Saved in:") || finalTitle === "Not Saved") {
-                finalTitle = this.currentViewingChat.title || "New Chat";
+            const titleInput = document.getElementById('gfp-input-save-title');
+            let finalTitle = titleInput.value.trim();
+
+            // 2. 检查是否输入了标题 (强制要求)
+            if (!finalTitle) {
+                alert("Please enter a chat name!");
+                titleInput.focus(); // 聚焦输入框
+                return;
             }
 
             const targetUrl = this.currentViewingChat.url;
@@ -228,14 +235,12 @@ class UIManager {
             }
         };
 
-        // 新增：确认重命名对话
         document.getElementById('gfp-confirm-rename-chat').onclick = async () => {
             const name = document.getElementById('gfp-input-rename-chat').value.trim();
             if (name && this.chatToRename) {
                 await this.storage.renameChat(this.chatToRename.folderId, this.chatToRename.index, name);
                 closeAll();
                 this.renderFolderList();
-                // 如果当前正在查看这个对话，刷新一下状态栏标题
                 this.updateCurrentChatState(this.currentViewingChat);
             }
         };
@@ -261,20 +266,23 @@ class UIManager {
             }
             document.getElementById('modal-select-folder').classList.add('active');
 
-            let prefill = this.currentViewingChat.title;
-            if (prefill === "Not Saved" || prefill.startsWith("Saved in:") || prefill === "Current Chat") {
-                 let t = document.title.replace(' - Gemini', '').trim();
-                 if (t && t !== "Gemini") prefill = t;
+            // === 核心修改：预填逻辑 ===
+            const titleInput = document.getElementById('gfp-input-save-title');
+            
+            // 如果对话已经保存过 (isSaved = true)，则预填它已有的名字，方便用户参考或仅修改文件夹
+            // 如果是新对话 (isSaved = false)，则清空，并显示 placeholder 提示输入
+            if (this.currentViewingChat.isSaved) {
+                titleInput.value = this.currentViewingChat.title;
+            } else {
+                titleInput.value = "";
             }
-            document.getElementById('gfp-input-save-title').value = prefill || "New Chat";
+            
             this.renderSelectFolderList();
         } else if (type === 'edit-folder') {
             document.getElementById('modal-folder-settings').classList.add('active');
             document.getElementById('gfp-input-rename').value = this.currentFolderToEdit.name;
         } else if (type === 'rename-chat') {
-            // 新增：打开重命名对话模态框
             document.getElementById('modal-rename-chat').classList.add('active');
-            // 获取当前标题并预填
             const folder = this.storage.folders.find(f => f.id === this.chatToRename.folderId);
             if (folder && folder.chats[this.chatToRename.index]) {
                 document.getElementById('gfp-input-rename-chat').value = folder.chats[this.chatToRename.index].title;
@@ -436,15 +444,13 @@ class UIManager {
                         }
                     };
 
-                    // === 新增：编辑按钮 ===
                     const editBtn = document.createElement('div');
-                    editBtn.className = 'gfp-chat-edit-btn'; // 使用新样式
+                    editBtn.className = 'gfp-chat-edit-btn'; 
                     editBtn.innerHTML = Icons.edit;
                     editBtn.title = 'Rename chat';
                     editBtn.onclick = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        // 记录要重命名的对话信息
                         this.chatToRename = { folderId: folder.id, index: chatIndex };
                         this.openModal('rename-chat');
                     };
@@ -463,7 +469,7 @@ class UIManager {
                     };
 
                     wrapper.appendChild(a);
-                    wrapper.appendChild(editBtn); // 插入编辑按钮
+                    wrapper.appendChild(editBtn); 
                     wrapper.appendChild(deleteBtn);
                     listContainer.appendChild(wrapper);
                 });
